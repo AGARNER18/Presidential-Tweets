@@ -33,6 +33,11 @@ library(tm)
 library(twitteR)
 library(plyr)
 
+
+#********************************************Obama Tweets*************************************************************
+
+# load tweets pulled from twitter made by Obama during his 2nd term as president 
+# available in repository
 obama <- read.csv("obama_tweets.csv")
 
 # get only the text
@@ -40,12 +45,6 @@ some_txt = obama$text
 
 # look at text before cleaning
 some_txt[10]
-
-#some_txt_non <- grep("some_txt", iconv(some_txt, "latin1", "ASCII", sub="some_txt"))
-# subset original vector of words to exclude words with non-ASCII char
-#some_txt<- some_txt[some_txt_non]
-
-#some_txt<-gsub('™', '', some_txt)
 
 # remove retweet
 some_txt = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", some_txt)
@@ -131,7 +130,7 @@ ggplot(no_un, aes(x=emotion)) +
   theme(plot.title = element_text(lineheight=.8, face="bold")) +
   scale_fill_brewer(palette="RdBu") +
   labs(x="emotion categories", y="number of tweets")
-
+e
 # plot distribution of polarity 
 ggplot(sent_df, aes(x=polarity)) +
   geom_bar(aes(y=..count.., fill=polarity)) +
@@ -141,7 +140,7 @@ ggplot(sent_df, aes(x=polarity)) +
   labs(x="polarity categories", y="number of tweets")
 
 # convert to corpus for word clouds
-all<-Corpus(VectorSource(sent_df$text))
+eall<-Corpus(VectorSource(sent_df$text))
 
 # Look at conversion from df to corpus 
 inspect(all[[3]])
@@ -151,7 +150,7 @@ sent_df[3,1]
 all<-tm_map(all, removeWords, stopwords("english"))
 inspect(all[[5]])
 
-# remove word endings such as ed or s
+e# remove word endings 
 all<-tm_map(all, stemDocument)
 inspect(all[[3]])
 
@@ -161,7 +160,7 @@ all<-tm_map(all, content_transformer(removeURL))
 
 # Get word frequencies
 dtm<-DocumentTermMatrix(all)
-dtm
+kdtm
 
 # calculate sum for how many times each term was used
 freq<-colSums(as.matrix(dtm))
@@ -174,19 +173,32 @@ length(freq)
 m<-as.matrix(dtm)
 m
 
+# Create document term matrix 
 dtm_up = DocumentTermMatrix(VCorpus(VectorSource(all)))
 freq_up <- colSums(as.matrix(dtm_up))
+
+# get sentiment for each term
 sentiments_up = calculate_sentiment(names(freq_up))
 sentiments_up = cbind(sentiments_up, as.data.frame(freq_up))
+
+# create new df with only positive terms
 sent_pos_up = sentiments_up[sentiments_up$sentiment == 'Positive',]
+
+# create new df with only negative terms
 sent_neg_up = sentiments_up[sentiments_up$sentiment == 'Negative',]
 
+# compare number of positive terms to negative terms
 cat("We have far lower negative Sentiments: ",sum(sent_neg_up$freq_up)," than positive: ",sum(sent_pos_up$freq_up))
 
 DT::datatable(sent_pos_up)
+
+# keep only the positive terms
 positive<-sent_pos_up[,-2]
+
+# keep only positive terms with frequency greater than 2
 positive<-positive[positive$freq_up>2,]
 
+# create word cloud of the positive terms
 layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
 par(mar=rep(0, 4))
 plot.new()
@@ -194,9 +206,9 @@ set.seed(100)
 patriotic<-c("red","blue", "red3", "red4", "royalblue", "royalblue4")
 wordcloud2(positive, size=1.3,gridSize=-3,minRotation = -pi/6, maxRotation = -pi/6, rotateRatio = 1,color=rep_len("red","blue", "red3", "red4", "royalblue", "royalblue4") ,nrow(positive))
 
+# create word cloud of negative terms
 DT::datatable(sent_neg_up)
-negative <-sent_neg_up[,-2]
-layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
+negative <-sent_neg_up[,-2]layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
 par(mar=rep(0, 4))
 plot.new()
 set.seed(100)
@@ -208,7 +220,7 @@ dim(m)
 # find frequent terms
 findFreqTerms(dtm, lowfreq = 2)
 
-# remove sparse terms that appear in less than 95% of documents
+# remove sparse terms that appear in less than 75% of documents
 dtms<-removeSparseTerms(dtm, 0.75)
 dtms
 
@@ -218,10 +230,10 @@ findAssocs(dtm, c("gun", "terrorist", "war"), corlimit=0.50)
 
 #correlation plot
 
-# build with 15 randomly selected words that appear at least 5 times with a correlation of 0.1 or greater
+# build with 20 randomly selected words that appear at least 2 times with a correlation of 0.2 or greater
 correlation_plot<-plot(dtm, terms=findFreqTerms(dtm, lowfreq = 2)[1:20], corThreshold = 0.2, weighting=T)
 
-# word frequency plot that appears at least 2 times
+# word frequency plot that appears at least 10 times
 wf<-data.frame(word=names(freq), freq=freq)
 p<-ggplot(subset(wf, freq>10), aes(word, freq))
 p<-p+ geom_bar(stat="identity", colour="black", fill="royalblue")
@@ -229,21 +241,17 @@ p<-p+ theme(axis.text.x = element_text(angle=45, hjust = 1))
 all_freq_plot<-p
 all_freq_plot
 
-# create word cloud
-wordcloud(names(freq), freq, min.freq = 200)
-
 freq<-colSums(as.matrix(dtm))
-# create color set to be used in the word cloud
-# add colors to the word cloud
-wordcloud(names(freq), freq, min.freq = 250, colors = dark2)
+# create word cloud of most frequently used words
 wordcloud(names(freq), freq, min.freq =3000, max.words=150, color=c("royalblue3","red", "royalblue", "red3", "firebrick2"))
+
 # k-means clustering
 # cluster based on their appearance together
-# remove the terms that appear less than 90% of documents
+# remove the terms that appear less than 95% of documents
 dtms<-removeSparseTerms(dtm, 0.95)
 # build dissimiliatry matrix and store in d
 d<-dist(t(dtms), method = "euclidian")
-# use kmeans to build 3 cluster
+# use kmeans to build 4 cluster
 kfit<-kmeans(d, 4)
 # view clusters
 kfit
@@ -273,31 +281,29 @@ plot(fit, hang = -1)
 groups<-cutree(fit, k=4)
 rect.hclust(fit, k=4, border = "red")
 
+# check if there are enough terms for topic analysis
 rowsum.dtm<-apply(dtm, 1, sum)
 dtms[rowsum.dtm>0,]
-
+# create LDA with 9 topics
 lda.obama.notes<-LDA(dtm[rowsum.dtm>0,], k=9, method="Gibbs", control=list(nstart=5, seed=list(101, 102, 103, 104, 105), best=TRUE, burnin=4000, iter=2000, thin=500))
-
+# view details of LDA
 summary(lda.obama.notes)
-
+# get 9 topics
 topics.terms<-terms(lda.obama.notes,9)
-
+# view topics
 knitr::kable(topics.terms)
-
+# view all words in each topic
 topics.terms.lst<-apply(topics.terms, MARGIN = 2, paste, collapse=", ")
-
 write(topics.terms.lst,"", 40, sep = "\n")
 
+# create barplot to show how often each topic appears in the documents
 topics.obama.notes<-topics(lda.obama.notes, 1)
-
 topics.term.freq<-rowSums(as.matrix(dtm[rowsum.dtm>0,]))
-
 topic.df<-data.frame(topics.term.freq, topics.obama.notes)
-
 knitr::kable(head(topic.df))
-
 barplot(table(topic.df$topics.obama.notes), names.arg = c("Topic-1", "Topic-2", "Topic-3", "Topic-4", "Topic-5", "Topic-6", "Topic-7", "Topic-8", "Topic-9"), col = blues9, main = "Total Documents Per Topic", ylab = "Documents")
 
+# create density plot of topics
 ob<-qplot(topics.term.freq,..count.., data = topic.df, geom = "density", fill=topics.terms.lst[topics.obama.notes], xlab = "Total Terms in Topics", ylab = "Documents Covered By Topics") 
 ob<- ob + scale_fill_brewer(palette="RdBu")
 ob<-ob+ labs(fill="Topics")
